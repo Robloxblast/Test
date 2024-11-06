@@ -29,14 +29,26 @@ PremiumOnly = <bool> - Makes the tab accessible to Sirus Premium users only.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local maxDistance = 10
 local gui = nil
 local followActive = false
 
-local GUARD_KEY = Enum.KeyCode.F
+local function pressGuardButton()
+    local guardButton = player.PlayerGui:WaitForChild("Main"):WaitForChild("Mobile"):WaitForChild("Holder"):WaitForChild("Guard")
+    if guardButton then
+        guardButton:TweenSize(guardButton.Size + UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+    end
+end
+--2
+
+local function releaseGuardButton()
+    local guardButton = player.PlayerGui:WaitForChild("Main"):WaitForChild("Mobile"):WaitForChild("Holder"):WaitForChild("Guard")
+    if guardButton then
+        guardButton:TweenSize(guardButton.Size, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+    end
+end
 
 local function getNearestPlayerWithBasketball()
     local closestPlayer = nil
@@ -82,7 +94,7 @@ local function createGui()
         startPos = button.Position
 
         UserInputService.InputChanged:Connect(function(inputChanged)
-            if dragging and inputChanged.UserInputType == Enum.UserInputType.MouseMovement or inputChanged.UserInputType == Enum.UserInputType.Touch then
+            if dragging and (inputChanged.UserInputType == Enum.UserInputType.MouseMovement or inputChanged.UserInputType == Enum.UserInputType.Touch) then
                 local delta = inputChanged.Position - dragInput.Position
                 button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
             end
@@ -124,19 +136,20 @@ RunService.Heartbeat:Connect(function()
             local myPos = player.Character.HumanoidRootPart.Position
             local distance = (targetPos - myPos).Magnitude
 
+           
             if distance <= maxDistance then
                 humanoid:MoveTo(targetPos)
-                VirtualInputManager:SendKeyEvent(true, GUARD_KEY, false, game)
+                pressGuardButton() --simu
             else
-                humanoid:Move(Vector3.new(0, 0, 0))
-                VirtualInputManager:SendKeyEvent(false, GUARD_KEY, false, game)
+                humanoid:Move(Vector3.new(0, 0, 0)) -- Stop moving if out of range
+                releaseGuardButton() -- Simulate releasing the guard button
             end
         else
-            humanoid:Move(Vector3.new(0, 0, 0))
-            VirtualInputManager:SendKeyEvent(false, GUARD_KEY, false, game)
+            humanoid:Move(Vector3.new(0, 0, 0)) -- Stop moving if no target
+            releaseGuardButton()  --simu
         end
     else
-        VirtualInputManager:SendKeyEvent(false, GUARD_KEY, false, game)
+        releaseGuardButton() --
     end
 end)
 
@@ -152,3 +165,4 @@ Tab:AddToggle({
         end
     end    
 })
+
