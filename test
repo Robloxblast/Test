@@ -1,20 +1,25 @@
-local player = game:GetService("Players").LocalPlayer
-local button = player.PlayerGui.Main.Mobile.Holder.Guard
+-- Services
+local Players = game:GetService("Players")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
--- Function to simulate button press (MouseButton1Down)
-local function pressButton()
-    button.InputBegan:Fire({UserInputType = Enum.UserInputType.MouseButton1}) -- Simulating MouseButton1Down
+-- Get the local player and the target button
+local player = Players.LocalPlayer
+local button = player:WaitForChild("PlayerGui"):WaitForChild("Main"):WaitForChild("Mobile"):WaitForChild("Holder"):WaitForChild("Guard")
+
+-- Function to hold the button press
+local function holdPressButton()
+-- Find the absolute position of the button
+local absolutePosition = button.AbsolutePosition
+local absoluteSize = button.AbsoluteSize
+
+-- Calculate the center of the button
+local center = Vector2.new(absolutePosition.X + (absoluteSize.X / 2), absolutePosition.Y + (absoluteSize.Y / 2))
+
+-- Simulate the touch using VirtualInputManager
+VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, true, button, 0) -- Simulate mouse down
+wait(15) -- Hold the button for 1 second, adjust this time as needed
+VirtualInputManager:SendMouseButtonEvent(center.X, center.Y, 0, false, button, 0) -- Simulate mouse up
 end
 
--- Function to simulate button release (MouseButton1Up)
-local function releaseButton()
-    button.InputEnded:Fire({UserInputType = Enum.UserInputType.MouseButton1}) -- Simulating MouseButton1Up
-end
-
--- Simulate holding down the button for a specific time (example: 3 seconds)
-local holdTime = 8
-
--- Simulate button press and hold
-pressButton()
-wait(holdTime)  -- Wait for the duration of the hold
-releaseButton()
+-- Call the function to hold press the button
+holdPressButton()
