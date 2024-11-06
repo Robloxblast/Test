@@ -1,4 +1,5 @@
-local UserInputService = game:GetService("UserInputService")
+-- Access the hidden VirtualInputManager service
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
 local isPressingR = true -- Set to false to stop the script
@@ -6,9 +7,9 @@ local isPressingR = true -- Set to false to stop the script
 local function pressRKey()
     -- Continuously presses and releases the "R" key
     while isPressingR do
-        UserInputService:SendKeyEvent(true, Enum.KeyCode.R, false, nil) -- Key down
+        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game) -- Key down
         wait(0.1) -- Adjust delay between presses as needed
-        UserInputService:SendKeyEvent(false, Enum.KeyCode.R, false, nil) -- Key up
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game) -- Key up
         wait(0.1) -- Adjust delay between cycles as needed
     end
 end
