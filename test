@@ -3,7 +3,7 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 
 -- Constants
-local PRESS_KEY = Enum.KeyCode.F
+local PRESS_KEY = Enum.KeyCode.E
 
 -- Toggles whether the key is being pressed
 local isPressingF = false
