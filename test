@@ -1,1 +1,154 @@
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "Title of the library", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
 
+--[[
+Name = <string> - The name of the UI.
+HidePremium = <bool> - Whether or not the user details shows Premium status or not.
+SaveConfig = <bool> - Toggles the config saving in the UI.
+ConfigFolder = <string> - The name of the folder where the configs are saved.
+IntroEnabled = <bool> - Whether or not to show the intro animation.
+IntroText = <string> - Text to show in the intro animation.
+IntroIcon = <string> - URL to the image you want to use in the intro animation.
+Icon = <string> - URL to the image you want displayed on the window.
+CloseCallback = <function> - Function to execute when the window is closed.
+]]
+
+local Tab = Window:MakeTab({
+	Name = "Tab 1",
+	Icon = "rbxassetid://4483345998",
+	PremiumOnly = false
+})
+
+--[[
+Name = <string> - The name of the tab.
+Icon = <string> - The icon of the tab.
+PremiumOnly = <bool> - Makes the tab accessible to Sirus Premium users only.
+]]
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+local maxDistance = 10
+local gui = nil
+local followActive = false
+
+local GUARD_KEY = Enum.KeyCode.F
+
+local function getNearestPlayerWithBasketball()
+    local closestPlayer = nil
+    local shortestDistance = maxDistance
+
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local char = otherPlayer.Character
+            local basketball = char:FindFirstChild("Basketball")
+            if basketball then
+                local myPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart").Position
+                local theirPos = char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position
+                if myPos and theirPos then
+                    local distance = (myPos - theirPos).Magnitude
+                    if distance < shortestDistance then
+                        closestPlayer = otherPlayer
+                        shortestDistance = distance
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function createGui()
+    gui = Instance.new("ScreenGui", player.PlayerGui)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 200, 0, 50)
+    button.Position = UDim2.new(0.5, -100, 0.5, -25)
+    button.Text = "Follow Off"
+    button.Draggable = true
+    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
+
+    local dragging = false
+    local dragInput
+    local startPos
+
+    button.MouseButton1Down:Connect(function(input)
+        dragging = true
+        dragInput = input
+        startPos = button.Position
+
+        UserInputService.InputChanged:Connect(function(inputChanged)
+            if dragging and inputChanged.UserInputType == Enum.UserInputType.MouseMovement or inputChanged.UserInputType == Enum.UserInputType.Touch then
+                local delta = inputChanged.Position - dragInput.Position
+                button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            end
+        end)
+    end)
+
+    button.MouseButton1Up:Connect(function()
+        dragging = false
+    end)
+
+    button.MouseButton1Click:Connect(function()
+        followActive = not followActive
+        if followActive then
+            button.Text = "Follow On"
+            button.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green
+        else
+            button.Text = "Follow Off"
+            button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
+        end
+    end)
+
+    button.Parent = gui
+end
+
+local function destroyGui()
+    if gui then
+        gui:Destroy()
+        gui = nil
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if followActive and player.Character and player.Character:FindFirstChild("Humanoid") then
+        local humanoid = player.Character.Humanoid
+        local targetPlayer = getNearestPlayerWithBasketball()
+
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPos = targetPlayer.Character.HumanoidRootPart.Position
+            local myPos = player.Character.HumanoidRootPart.Position
+            local distance = (targetPos - myPos).Magnitude
+
+            if distance <= maxDistance then
+                humanoid:MoveTo(targetPos)
+                VirtualInputManager:SendKeyEvent(true, GUARD_KEY, false, game)
+            else
+                humanoid:Move(Vector3.new(0, 0, 0))
+                VirtualInputManager:SendKeyEvent(false, GUARD_KEY, false, game)
+            end
+        else
+            humanoid:Move(Vector3.new(0, 0, 0))
+            VirtualInputManager:SendKeyEvent(false, GUARD_KEY, false, game)
+        end
+    else
+        VirtualInputManager:SendKeyEvent(false, GUARD_KEY, false, game)
+    end
+end)
+
+Tab:AddToggle({
+    Name = "Auto Guard Mobile",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            createGui()
+        else
+            destroyGui()
+            followActive = false
+        end
+    end    
+})
