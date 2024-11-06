@@ -1,1 +1,20 @@
+local player = game:GetService("Players").LocalPlayer
+local button = player.PlayerGui.Main.Mobile.Holder.Guard
 
+-- Function to simulate button press (MouseButton1Down)
+local function pressButton()
+    button.InputBegan:Fire({UserInputType = Enum.UserInputType.MouseButton1}) -- Simulating MouseButton1Down
+end
+
+-- Function to simulate button release (MouseButton1Up)
+local function releaseButton()
+    button.InputEnded:Fire({UserInputType = Enum.UserInputType.MouseButton1}) -- Simulating MouseButton1Up
+end
+
+-- Simulate holding down the button for a specific time (example: 3 seconds)
+local holdTime = 8
+
+-- Simulate button press and hold
+pressButton()
+wait(holdTime)  -- Wait for the duration of the hold
+releaseButton()
