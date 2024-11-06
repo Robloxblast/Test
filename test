@@ -20,40 +20,45 @@ local Tab = Window:MakeTab({
 })
 
 
--- Services
+-- Variables
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local maxDistance = 10
+local gui = nil
+local followActive = false
 
 -- Constants
-local PRESS_KEY = Enum.KeyCode.F
 local GUARD_KEY = Enum.KeyCode.F
-local maxDistance = 10
-
--- Local player
-local player = Players.LocalPlayer
-local followActive = false
-local gui = nil
-
--- Toggles whether the key is being pressed
 local isPressingF = false
 
--- Function to simulate pressing the "F" key
-local function pressFKey()
-  if not isPressingF then
-    VirtualUser:CaptureController()
-    VirtualUser:SetKeyDown(PRESS_KEY.Value)
-    isPressingF = true
-  end
-end
+-- Function to find the nearest player holding the "Basketball" tool
+local function getNearestPlayerWithBasketball()
+    local closestPlayer = nil
+    local shortestDistance = maxDistance
 
--- Function to simulate releasing the "F" key
-local function releaseFKey()
-  if isPressingF then
-    VirtualUser:SetKeyUp(PRESS_KEY.Value)
-    isPressingF = false
-  end
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local char = otherPlayer.Character
+            local basketball = char:FindFirstChild("Basketball")
+            if basketball then
+                local myPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart").Position
+                local theirPos = char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position
+                if myPos and theirPos then
+                    local distance = (myPos - theirPos).Magnitude
+                    if distance < shortestDistance then
+                        closestPlayer = otherPlayer
+                        shortestDistance = distance
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
 end
 
 -- Create GUI Button
@@ -110,51 +115,6 @@ local function destroyGui()
     end
 end
 
--- Detect key press for the "F" key to start pressing
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == PRESS_KEY then
-        pressFKey()
-    end
-end)
-
--- Detect key release for the "F" key to stop pressing
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == PRESS_KEY then
-        releaseFKey()
-    end
-end)
-
--- Detect touch input for simulating the key press on mobile
-UserInputService.TouchTap:Connect(function()
-    pressFKey()
-end)
-
--- Function to find the nearest player with the "Basketball" tool
-local function getNearestPlayerWithBasketball()
-    local closestPlayer = nil
-    local shortestDistance = maxDistance
-
-    for _, otherPlayer in pairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            local char = otherPlayer.Character
-            local basketball = char:FindFirstChild("Basketball")
-            if basketball then
-                local myPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart").Position
-                local theirPos = char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position
-                if myPos and theirPos then
-                    local distance = (myPos - theirPos).Magnitude
-                    if distance < shortestDistance then
-                        closestPlayer = otherPlayer
-                        shortestDistance = distance
-                    end
-                end
-            end
-        end
-    end
-
-    return closestPlayer
-end
-
 -- Follow loop
 RunService.Heartbeat:Connect(function()
     if followActive and player.Character and player.Character:FindFirstChild("Humanoid") then
@@ -169,20 +129,32 @@ RunService.Heartbeat:Connect(function()
             -- Follow player by walking if within the max distance
             if distance <= maxDistance then
                 humanoid:MoveTo(targetPos)
-                -- Hold the F key to guard
-                pressFKey()
+                -- Simulate holding the "F" key to guard
+                VirtualUser:CaptureController()
+                VirtualUser:SetKeyDown(GUARD_KEY)
             else
                 humanoid:Move(Vector3.new(0, 0, 0)) -- Stop moving if out of range
-                releaseFKey() -- Release the F key
+                VirtualUser:SetKeyUp(GUARD_KEY) -- Release the "F" key
             end
         else
             humanoid:Move(Vector3.new(0, 0, 0)) -- Stop moving if no target
-            releaseFKey() -- Release the F key
+            VirtualUser:SetKeyUp(GUARD_KEY) -- Release the "F" key
         end
     else
-        releaseFKey() -- Release the F key if follow is disabled
+        VirtualUser:SetKeyUp(GUARD_KEY) -- Release the "F" key if follow is disabled
     end
 end)
 
--- Create GUI
-createGui()
+-- Add Orion toggle
+Tab:AddToggle({
+    Name = "Auto Guard Mobile",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            createGui() -- Create GUI when the toggle is activated
+        else
+            destroyGui() -- Destroy GUI when the toggle is deactivated
+            followActive = false -- Stop following when the toggle is off
+        end
+    end    
+})
