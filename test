@@ -1,20 +1,45 @@
--- Access the hidden VirtualInputManager service
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
+-- Services
+local UserInputService = game:GetService("UserInputService")
+local VirtualUser = game:GetService("VirtualUser")
 
-local isPressingR = true -- Set to false to stop the script
+-- Constants
+local PRESS_KEY = Enum.KeyCode.F
 
-local function pressRKey()
-    -- Continuously presses and releases the "R" key
-    while isPressingR do
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game) -- Key down
-        wait(0.1) -- Adjust delay between presses as needed
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game) -- Key up
-        wait(0.1) -- Adjust delay between cycles as needed
-    end
+-- Toggles whether the key is being pressed
+local isPressingF = false
+
+-- Function to simulate pressing the "F" key
+local function pressFKey()
+  if not isPressingF then
+    VirtualUser:CaptureController()
+    VirtualUser:SetKeyDown(PRESS_KEY.Value)
+    isPressingF = true
+  end
 end
 
--- Start pressing the "R" key
-RunService.Heartbeat:Connect(pressRKey)
+-- Function to simulate releasing the "F" key
+local function releaseFKey()
+  if isPressingF then
+    VirtualUser:SetKeyUp(PRESS_KEY.Value)
+    isPressingF = false
+  end
+end
 
--- To stop the continuous pressing of "R" key, set `isPressingR` to false
+-- Detect key press for the "F" key to start pressing
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+  if not gameProcessed and input.KeyCode == PRESS_KEY then
+    pressFKey()
+  end
+end)
+
+-- Detect key release for the "F" key to stop pressing
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+  if not gameProcessed and input.KeyCode == PRESS_KEY then
+    releaseFKey()
+  end
+end)
+
+-- Detect touch input for simulating the key press on mobile
+UserInputService.TouchTap:Connect(function()
+  pressFKey()
+end)
