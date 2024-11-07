@@ -2,7 +2,6 @@ local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shl
 
 local Window = OrionLib:MakeWindow({Name = "Title of the library", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
 
-
 local Tab = Window:MakeTab({
 	Name = "Tab 1",
 	Icon = "rbxassetid://4483345998",
@@ -50,7 +49,7 @@ local function fxFindNearestWithTool()
 
             if fxHum and fxRootPart and fxHasTool(fxCh) then
                 local fxDistance = (fxRoot.Position - fxRootPart.Position).Magnitude
-                if fxDistance < fxDist then
+                if fxDistance < fxDist and fxDistance <= 15 then  -- Only consider players within 15 units
                     fxNearest = fxPlayer
                     fxDist = fxDistance
                 end
@@ -61,14 +60,22 @@ local function fxFindNearestWithTool()
     return fxNearest
 end
 
+local function fxFollowTarget(fxTarget)
+    if fxTarget and fxTarget.Character then
+        local fxTargetRootPart = fxTarget.Character:FindFirstChild("HumanoidRootPart")
+        if fxTargetRootPart then
+            fxHuman:MoveTo(fxTargetRootPart.Position + fxTargetRootPart.CFrame.LookVector * 5)
+            fxPressF()
+        end
+    end
+end
+
 local function fxMoveToBall(ball)
     if ball and ball:IsDescendantOf(workspace) then
-        local ballVelocity = ball.AssemblyLinearVelocity
-        local predictedPosition = ball.Position + ballVelocity * 0.2  -- Predicts for basketball 
-
-        local fxDistance = (fxRoot.Position - predictedPosition).Magnitude
-        if fxDistance > 15 then  --distance 
-            fxHuman:MoveTo(predictedPosition)
+        local ballPosition = ball.Position
+        local fxDistance = (fxRoot.Position - ballPosition).Magnitude
+        if fxDistance > 15 then
+            fxHuman:MoveTo(ballPosition)
         end
     end
 end
@@ -82,33 +89,32 @@ local function fxNpcMove()
         else
             local fxNearestPlayer = fxFindNearestWithTool()
             if fxNearestPlayer then
-                fxPressF()
-                fxHuman:MoveTo(fxNearestPlayer.Character.HumanoidRootPart.Position + Vector3.new(5, 0, 5))
+                fxFollowTarget(fxNearestPlayer)
             end
         end
 
-        wait(0) --react time
+        wait(0)
     end
 end
 
-local function createGui()
+local function createFollowButton()
     gui = Instance.new("ScreenGui", Basket:WaitForChild("PlayerGui"))
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0, 200, 0, 50)
     button.Position = UDim2.new(0.5, -100, 0.5, -25)
-    button.Text = "Follow Off"
+    button.Text = "Auto Guard - 🔴[Off]"
     button.Draggable = true
-    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) 
+    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
     button.Parent = gui
 
     button.MouseButton1Click:Connect(function()
         fxFollow = not fxFollow
         if fxFollow then
-            button.Text = "Auto Gurd ON"
+            button.Text = "Auto Guard - 🟢[On]"
             button.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green
             fxNpcMove()
         else
-            button.Text = "Auto Gurd OF"
+            button.Text = "Auto Guard - 🔴[Off]"
             button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
             fxReleaseF()
         end
@@ -128,7 +134,7 @@ Tab:AddToggle({
     Callback = function(Value)
         fxFollow = Value
         if fxFollow then
-            createGui()
+            createFollowButton()
         else
             destroyGui()
         end
