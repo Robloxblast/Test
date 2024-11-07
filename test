@@ -26,143 +26,82 @@ PremiumOnly = <bool> - Makes the tab accessible to Sirus Premium users only.
 ]]
 
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local Basket = game.Players.LocalPlayer
+local fx = Basket.Character or Basket.CharacterAdded:Wait()
+local fxHuman = fx:WaitForChild("Humanoid")
+local fxRoot = fx:WaitForChild("HumanoidRootPart")
+local BasketToolName = "Basketball"
+local fxFollow = false
 
-local player = Players.LocalPlayer
-local maxDistance = 10
-local gui = nil
-local followActive = false
-
-local function pressGuardButton()
-    local guardButton = player.PlayerGui:WaitForChild("Main"):WaitForChild("Mobile"):WaitForChild("Holder"):WaitForChild("Guard")
-    if guardButton then
-        guardButton:TweenSize(guardButton.Size + UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
-    end
-end
---2
-
-local function releaseGuardButton()
-    local guardButton = player.PlayerGui:WaitForChild("Main"):WaitForChild("Mobile"):WaitForChild("Holder"):WaitForChild("Guard")
-    if guardButton then
-        guardButton:TweenSize(guardButton.Size, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
-    end
+local function fxPressF()
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F, false, game)
 end
 
-local function getNearestPlayerWithBasketball()
-    local closestPlayer = nil
-    local shortestDistance = maxDistance
+local function fxReleaseF()
+    game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.F, false, game)
+end
 
-    for _, otherPlayer in pairs(Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character then
-            local char = otherPlayer.Character
-            local basketball = char:FindFirstChild("Basketball")
-            if basketball then
-                local myPos = player.Character and player.Character:FindFirstChild("HumanoidRootPart").Position
-                local theirPos = char:FindFirstChild("HumanoidRootPart") and char.HumanoidRootPart.Position
-                if myPos and theirPos then
-                    local distance = (myPos - theirPos).Magnitude
-                    if distance < shortestDistance then
-                        closestPlayer = otherPlayer
-                        shortestDistance = distance
-                    end
+local function fxHasTool(character)
+    local fxTool = character:FindFirstChildOfClass("Tool")
+    return fxTool and fxTool.Name == BasketToolName
+end
+
+local function fxFindNearestWithTool()
+    local fxNearest, fxDist = nil, math.huge
+
+    for _, fxPlayer in pairs(game.Players:GetPlayers()) do
+        if fxPlayer ~= Basket and fxPlayer.Character and fxPlayer.Team ~= Basket.Team then
+            local fxCh = fxPlayer.Character
+            local fxHum = fxCh:FindFirstChild("Humanoid")
+            local fxRootPart = fxCh:FindFirstChild("HumanoidRootPart")
+
+            if fxHum and fxRootPart and fxHasTool(fxCh) then
+                local fxDistance = (fxRoot.Position - fxRootPart.Position).Magnitude
+                if fxDistance < fxDist then
+                    fxNearest = fxPlayer
+                    fxDist = fxDistance
                 end
             end
         end
     end
 
-    return closestPlayer
+    return fxNearest
 end
 
-local function createGui()
-    gui = Instance.new("ScreenGui", player.PlayerGui)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 200, 0, 50)
-    button.Position = UDim2.new(0.5, -100, 0.5, -25)
-    button.Text = "Follow Off"
-    button.Draggable = true
-    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
-
-    local dragging = false
-    local dragInput
-    local startPos
-
-    button.MouseButton1Down:Connect(function(input)
-        dragging = true
-        dragInput = input
-        startPos = button.Position
-
-        UserInputService.InputChanged:Connect(function(inputChanged)
-            if dragging and (inputChanged.UserInputType == Enum.UserInputType.MouseMovement or inputChanged.UserInputType == Enum.UserInputType.Touch) then
-                local delta = inputChanged.Position - dragInput.Position
-                button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-            end
-        end)
-    end)
-
-    button.MouseButton1Up:Connect(function()
-        dragging = false
-    end)
-
-    button.MouseButton1Click:Connect(function()
-        followActive = not followActive
-        if followActive then
-            button.Text = "Follow On"
-            button.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green
-        else
-            button.Text = "Follow Off"
-            button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
+local function fxFollowTarget(fxTarget)
+    if fxTarget and fxTarget.Character then
+        local fxTargetRootPart = fxTarget.Character:FindFirstChild("HumanoidRootPart")
+        if fxTargetRootPart then
+            local fxTargetPos = fxTargetRootPart.Position + fxTargetRootPart.CFrame.LookVector * 5
+            fxHuman:MoveTo(fxTargetPos)
+            fxPressF()
         end
-    end)
-
-    button.Parent = gui
-end
-
-local function destroyGui()
-    if gui then
-        gui:Destroy()
-        gui = nil
     end
 end
 
-RunService.Heartbeat:Connect(function()
-    if followActive and player.Character and player.Character:FindFirstChild("Humanoid") then
-        local humanoid = player.Character.Humanoid
-        local targetPlayer = getNearestPlayerWithBasketball()
-
-        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local targetPos = targetPlayer.Character.HumanoidRootPart.Position
-            local myPos = player.Character.HumanoidRootPart.Position
-            local distance = (targetPos - myPos).Magnitude
-
-           
-            if distance <= maxDistance then
-                humanoid:MoveTo(targetPos)
-                pressGuardButton() --simu
-            else
-                humanoid:Move(Vector3.new(0, 0, 0)) -- Stop moving if out of range
-                releaseGuardButton() -- Simulate releasing the guard button
-            end
+local function fxNpcMove()
+    while fxFollow do
+        local fxNearestPlayer = fxFindNearestWithTool()
+        if fxNearestPlayer then
+            fxFollowTarget(fxNearestPlayer)
         else
-            humanoid:Move(Vector3.new(0, 0, 0)) -- Stop moving if no target
-            releaseGuardButton()  --simu
+            local fxRandDirection = Vector3.new(math.random(-10, 10), 0, math.random(-10, 10))
+            fxHuman:MoveTo(fxRoot.Position + fxRandDirection)
         end
-    else
-        releaseGuardButton() --
+        wait(0.1)
     end
-end)
+end
 
 Tab:AddToggle({
     Name = "Auto Guard Mobile",
     Default = false,
     Callback = function(Value)
-        if Value then
-            createGui()
+        fxFollow = Value
+        if fxFollow then
+            fxNpcMove()
         else
-            destroyGui()
-            followActive = false
+            fxReleaseF()
         end
-    end    
+    end
 })
 
