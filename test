@@ -1,17 +1,7 @@
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
 local Window = OrionLib:MakeWindow({Name = "Title of the library", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
 
---[[
-Name = <string> - The name of the UI.
-HidePremium = <bool> - Whether or not the user details shows Premium status or not.
-SaveConfig = <bool> - Toggles the config saving in the UI.
-ConfigFolder = <string> - The name of the folder where the configs are saved.
-IntroEnabled = <bool> - Whether or not to show the intro animation.
-IntroText = <string> - Text to show in the intro animation.
-IntroIcon = <string> - URL to the image you want to use in the intro animation.
-Icon = <string> - URL to the image you want displayed on the window.
-CloseCallback = <function> - Function to execute when the window is closed.
-]]
 
 local Tab = Window:MakeTab({
 	Name = "Tab 1",
@@ -19,19 +9,22 @@ local Tab = Window:MakeTab({
 	PremiumOnly = false
 })
 
---[[
-Name = <string> - The name of the tab.
-Icon = <string> - The icon of the tab.
-PremiumOnly = <bool> - Makes the tab accessible to Sirus Premium users only.
-]]
-
-
 local Basket = game.Players.LocalPlayer
 local fx = Basket.Character or Basket.CharacterAdded:Wait()
 local fxHuman = fx:WaitForChild("Humanoid")
 local fxRoot = fx:WaitForChild("HumanoidRootPart")
 local BasketToolName = "Basketball"
 local fxFollow = false
+local gui
+
+local function getBasketball()
+    for _, tool in pairs(workspace:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name == BasketToolName then
+            return tool
+        end
+    end
+    return nil
+end
 
 local function fxPressF()
     game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.F, false, game)
@@ -68,27 +61,64 @@ local function fxFindNearestWithTool()
     return fxNearest
 end
 
-local function fxFollowTarget(fxTarget)
-    if fxTarget and fxTarget.Character then
-        local fxTargetRootPart = fxTarget.Character:FindFirstChild("HumanoidRootPart")
-        if fxTargetRootPart then
-            local fxTargetPos = fxTargetRootPart.Position + fxTargetRootPart.CFrame.LookVector * 5
-            fxHuman:MoveTo(fxTargetPos)
-            fxPressF()
+local function fxMoveToBall(ball)
+    if ball and ball:IsDescendantOf(workspace) then
+        local ballVelocity = ball.AssemblyLinearVelocity
+        local predictedPosition = ball.Position + ballVelocity * 0.2  -- Predicts for basketball 
+
+        local fxDistance = (fxRoot.Position - predictedPosition).Magnitude
+        if fxDistance > 15 then  --distance 
+            fxHuman:MoveTo(predictedPosition)
         end
     end
 end
 
 local function fxNpcMove()
     while fxFollow do
-        local fxNearestPlayer = fxFindNearestWithTool()
-        if fxNearestPlayer then
-            fxFollowTarget(fxNearestPlayer)
+        local ball = getBasketball()
+
+        if ball and not ball.Parent:IsA("Player") then
+            fxMoveToBall(ball)
         else
-            local fxRandDirection = Vector3.new(math.random(-10, 10), 0, math.random(-10, 10))
-            fxHuman:MoveTo(fxRoot.Position + fxRandDirection)
+            local fxNearestPlayer = fxFindNearestWithTool()
+            if fxNearestPlayer then
+                fxPressF()
+                fxHuman:MoveTo(fxNearestPlayer.Character.HumanoidRootPart.Position + Vector3.new(5, 0, 5))
+            end
         end
-        wait(0.1)
+
+        wait(0) --react time
+    end
+end
+
+local function createGui()
+    gui = Instance.new("ScreenGui", Basket:WaitForChild("PlayerGui"))
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0, 200, 0, 50)
+    button.Position = UDim2.new(0.5, -100, 0.5, -25)
+    button.Text = "Follow Off"
+    button.Draggable = true
+    button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) 
+    button.Parent = gui
+
+    button.MouseButton1Click:Connect(function()
+        fxFollow = not fxFollow
+        if fxFollow then
+            button.Text = "Auto Gurd ON"
+            button.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Green
+            fxNpcMove()
+        else
+            button.Text = "Auto Gurd OF"
+            button.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
+            fxReleaseF()
+        end
+    end)
+end
+
+local function destroyGui()
+    if gui then
+        gui:Destroy()
+        gui = nil
     end
 end
 
@@ -98,10 +128,9 @@ Tab:AddToggle({
     Callback = function(Value)
         fxFollow = Value
         if fxFollow then
-            fxNpcMove()
+            createGui()
         else
-            fxReleaseF()
+            destroyGui()
         end
     end
 })
-
